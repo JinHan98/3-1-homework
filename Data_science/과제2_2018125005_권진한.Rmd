@@ -1,0 +1,137 @@
+---
+title: "과제2_2018125005_권진한"
+output: html_document
+date: '2022-03-12'
+---
+
+
+```{r}
+sum_posneg <-function(mat,dim){
+  plus<-vector()  #양수를 넣어놓는 벡터
+  minus<-vector() #음수를 넣어놓는 벡터
+  if(dim==1) #행으로 계산을 할 떄
+  {
+    for(row in 1:nrow(mat)){
+      plus<-c(plus,0) #한번 회문을 할때마다 벡터에 0을 추가해준다
+      minus<-c(minus,0) #각각의 벡터는 행(dim==2일때는 열)의 음수,양수 합
+      for(col in 1:ncol(mat)){
+        if(mat[row,col]>=0){
+          plus[row]<-plus[row]+mat[row,col]
+        }
+        else{
+          minus[row]<-minus[row]+mat[row,col]
+        }
+      }
+    }
+    r_mat<-cbind(plus,minus)
+  }
+  else if(dim==2) #열로 계산 할 때
+  {
+    for(col in 1:ncol(mat)){
+      plus<-c(plus,0)
+      minus<-c(minus,0)
+      for(row in 1:nrow(mat)){
+        if(mat[row,col]>=0){
+          plus[col]<-plus[col]+mat[row,col]
+        }
+        else{
+          minus[col]<-minus[col]+mat[row,col]
+        }
+      }
+    }
+    r_mat<-rbind(plus,minus)
+  }
+  else{ #입력이 잘못된 경우
+    print("invalid functioncall")
+  }
+  return (r_mat)
+}
+
+a<-c(1,-1,1,-1,1,1,-2,1,1)
+b<-matrix(a,nrow = 3,ncol = 3)
+sum_posneg(b,1)
+```
+
+```{r}
+pos_neg <-function(x){
+  pos<-c(0)
+  neg<-c(0)
+  for(i in 1:length(x)){#matrix의 한 행 혹은 열에 대해
+    if(x[i]>=0){
+      pos[1]<-pos[1]+x[i]
+    }
+    else{
+      neg[1]<-neg[1]+x[i]
+    }
+  }
+  re<-rbind(pos,neg)#열의 경우를 일반적이라고 생각해 rbind를 함
+  return (re)
+}
+sum_posneg_apply <-function(mat,dim){
+  re<-apply(mat,dim,pos_neg)
+  if(dim==1){#위에서 cbind를 했을경우 dim==2인경우에 matrix가 resize 됨
+    temp<-re[1,]
+    temp1<-re[2,]
+    re<-cbind(temp,temp1)
+  }
+  return (re)
+}
+sum_posneg_apply(b,2)
+```
+
+```{r}
+find_char <-function(m,dim,char){#char는 특정 단어
+  char_vec<-vector()
+  if(dim==1){
+    for(row in 1:nrow(m)){
+      char_vec<-c(char_vec,0)
+      for(col in 1:ncol(m)){
+        if(m[row,col]==char){#같으면 숫자를 하나씩 count
+          char_vec[row]<-char_vec[row]+1
+        }
+      }
+    }
+    char_vec<-matrix(char_vec,ncol = 1) #각 행별로의 개수를 구했으므로 형태를 바꿈
+  }
+  else if(dim==2){
+    for(col in 1:ncol(m)){
+      char_vec<-c(char_vec,0)
+      for(row in 1:nrow(m)){
+        if(m[row,col]==char){
+          char_vec[col]<-char_vec[col]+1
+        }
+      }
+    }
+  }
+  else{
+    print("invalid functioncall")
+  }
+  return (char_vec)
+}
+e<-c("ac","ab","ab","ac","aa","bb","ab","aa","bb","ab","aa","ab","bb","aa","ab")
+e<-matrix(e,nrow = 3,ncol = 5)
+find_char(e,2,"ab")
+```
+
+```{r}
+is_that <-function(x){#paramater가 2개인경우 apply를 사용하지 못해 이렇게 구현하였다
+  how_many<-c(0)
+  for(i in 1:length(x)){
+    if(x[i]=="ab"){
+      how_many[1]<-how_many[1]+1
+    }
+  }
+  return (how_many)
+}
+find_char_apply<-function(m,dim,char){
+  ans<-apply(m,dim,is_that)
+  if(dim==1){
+    ans<-matrix(ans,ncol = 1)
+  }
+  return (ans)
+}
+e<-c("ac","ab","ab","ac","aa","bb","ab","aa","bb","ab","aa","ab","bb","aa","ab")
+e<-matrix(e,nrow = 3,ncol = 5)
+find_char_apply(e,2,"ab")
+```
+

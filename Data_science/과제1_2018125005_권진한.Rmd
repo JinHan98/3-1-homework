@@ -1,0 +1,101 @@
+---
+title: "과제1_2018125005_권진한"
+output: html_document
+date: '2022-03-04'
+---
+
+```{r}
+setwd("/Users/gwonjinhan/Desktop")
+#패턴<-수도권에서 거주하는 사람은 A후보를 지지할 것이다.
+#월수입이 700이상인 사람은 A후보를 지지 할 것이다.
+#남성이고 30대인 사람은 A후보를 지지 할 것이다.
+```
+
+```{r}
+#training data 생성
+x<-data.frame(Name=c("a","b","c","d","e","f","g","h","i","j"),
+              Area=c("지방","지방","수도권","지방","지방","지방","수도권","수도권","지방","수도권"),
+              sex=c("f","f","m","m","m","m","f","m","f","m"),
+              salary=c(480,400,500,680,400,530,1000,370,480,320),
+              age=c(46,73,72,39,57,59,28,33,66,78),
+              prefer=c("B","B","A","A","B","B","A","A","B","A"))
+row.names(x)<-c(1,2,3,4,5,6,7,8,9,10)
+write.csv(
+  x,
+  file="training_data.csv",
+  row.names=TRUE,
+)
+```
+
+```{r}
+#test data생성
+y<-data.frame(Name=c("a","b","c","d","e","f","g","h","i","j"),
+              Area=c("수도권","지방","지방","수도권","지방","지방","수도권","지방","수도권","수도권"),
+              sex=c("m","f","f","m","m","f","m","f","f","m"),
+              salary=c(870,570,430,900,1000,300,890,150,840,280),
+              age=c(28,64,55,63,31,47,65,53,39,41))
+#row.names(x)<-c(1,2,3,4,5,6,7,8,9,10)
+write.csv(
+  y,
+  file="test_data.csv",
+  row.names=TRUE,
+)
+```
+
+```{r}
+#test data 불러오기
+data<-read.csv(
+  file="test_data.csv",
+  header=TRUE,
+  stringsAsFactors = default.stringsAsFactors()
+)
+data<-data[-1]
+```
+
+
+
+```{r}
+#예측모델
+A_like <-function(d)
+{
+  data=NULL
+  for(i in 1:10){
+    if(d[[2]][i]=="수도권"||d[[4]][i]>=700){
+      data<-c(data,"A")
+    }
+    else if(d[[3]][i]=="m"&&d[[5]][i]>29&&d[[5]][i]<40){
+      data<-c(data,"A")
+    }
+    else{
+      data<-c(data,"B")
+    }
+  }
+  return (data)
+}
+#예측모델에 test data 적용
+need_data<-A_like(data)
+need_data
+
+#test data가 정분류되었을때 나와야하는 값
+corret_data<-c("A","B","B","A","A","B","A","B","A","A")
+```
+
+```{r}
+#정확도 계산
+correct <-function(data,r_data)
+{
+  all<-c(0)
+  right<-c(0)
+  for(i in 1:10){
+    if(data[i]==r_data[i]){
+      right=right+1
+    }
+    all=all+1
+  }
+  cor<-right/all
+  return (cor)
+}
+correct(need_data,corret_data)
+```
+
+
