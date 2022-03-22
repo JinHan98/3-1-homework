@@ -1,0 +1,137 @@
+---
+title: "과제"
+output: html_document
+date: '2022-03-19'
+---
+
+```{r}
+setwd("/Users/gwonjinhan/Desktop")
+library(ggplot2)
+```
+
+```{r}
+data<-read.csv(
+  file="weight-height.csv",          
+  header=TRUE,  
+  na.strings="NA",
+  stringsAsFactors=default.stringsAsFactors() 
+)
+data$Sex<-as.factor(data$Sex)#성별은 명목형 변수이기 때문에 factor로 변환
+data$Height<-data$Height*2.54
+data$Weight<-data$Weight/2.205
+data
+```
+
+```{r}
+#남자와 여자를 구분
+data_male<-data[data$Sex=='Male',]
+data_female<-data[data$Sex=='Female',]
+data_male
+data_female
+```
+
+```{r}
+data_mean<-c(
+  mean(data_male$Height), #남자 평균 키
+  mean(data_male$Weight), #남자 평균 몸무게
+  mean(data_female$Height), #여자 평균 키
+  mean(data_female$Weight) #여자 평균 몸무게
+)
+data_median<-c(
+  median(data_male$Height), #남자 키 중간값
+  median(data_male$Weight), #남자 몸무게 중간값
+  median(data_female$Height), #여자 키 중간값
+  median(data_female$Weight) #여자 몸무게 중간값
+)
+data_var<-c(
+  var(data_male$Height), #남자 키 분산
+  var(data_male$Weight), #남자 몸무게 분산
+  var(data_female$Height), #여자 키 분산
+  var(data_female$Weight) #여자 몸무게 분산
+)
+data_sd<-c(
+  sd(data_male$Height), #남자 키 표준편차
+  sd(data_male$Weight), #남자 몸무게 표준편차
+  sd(data_female$Height), #여자 키 표준편차
+  sd(data_female$Weight) #여자 몸무게 표준편차
+)
+data_max<-c(
+  max(data_male$Height), #남자 키 최대값
+  max(data_male$Weight), #남자 몸무게 최대값
+  max(data_female$Height), #여자 키 최대값
+  max(data_female$Weight) #여자 몸무게 최대값
+)
+data_min<-c(
+  min(data_male$Height), #남자 키 최소값
+  min(data_male$Weight), #남자 몸무게 최소값
+  min(data_female$Height), #여자 키 최소값
+  min(data_female$Weight) #여자 몸무게 최소값
+)
+data_all<-data.frame(data_mean,data_median,data_var,data_sd,data_max,data_min)
+rownames(data_all)<-c("male height","male weight","female height","female weight")
+data_all
+```
+
+```{r}
+#상관관계를 알아보기 위해 pearson 상관계수를 구해봄
+#pearson 상관계수는 각 성별의 키와 몸무게 사이의 상관계수를 나타냄
+pearson_male<-cor(data_male$Height,data_male$Weight)
+pearson_female<-cor(data_female$Height,data_female$Weight)
+pearson_male
+pearson_female
+#남자 상관계수 그래프
+plot(data_male$Height,data_male$Weight)
+abline(a=-68,b=pearson_male,col="blue")
+#여자 상관계수 그래프
+plot(data_female$Height,data_female$Weight)
+abline(a=-76,b=pearson_female,col="red")
+```
+
+```{r}
+x_axis<-seq(136,201,by=1) #x축을 얼마나 쪼갤지
+male_hist=hist(data_male$Height,breaks=x_axis,plot = FALSE)
+female_hist=hist(data_female$Height,breaks=x_axis,plot=FALSE)
+plot(male_hist, col=adjustcolor("blue",alpha=0.5),ann=FALSE)
+plot(female_hist, col=adjustcolor("red",alpha=0.5),add=TRUE)
+
+```
+
+```{r}
+x_axis<-seq(28,123,by=1) #x축을 얼마나 쪼갤지
+male_hist=hist(data_male$Weight,breaks=x_axis,plot = FALSE)
+female_hist=hist(data_female$Weight,breaks=x_axis,plot=FALSE)
+plot(male_hist, col=adjustcolor("blue",alpha=0.5),ylim = c(0,300),ann=FALSE)
+plot(female_hist, col=adjustcolor("red",alpha=0.5),add=TRUE)
+```
+
+```{r}
+#cutoff 기준점은 키는 168 몸무게는 74
+#오분류율=오분류된 사례/전체사례
+male_Height_er<-c(nrow(data_male[data_male$Height<168,])/5000)
+female_Height_er<-c(nrow(data_male[data_female$Height>=168,])/5000)
+male_Weight_er<-c(nrow(data_male[data_male$Weight<74,])/5000)
+female_Weight_er<-c(nrow(data_male[data_female$Weight>=74,])/5000)
+male_Height_er
+female_Height_er
+male_Weight_er
+female_Weight_er
+
+```
+
+```{r}
+plot(formula = Height ~ Weight,
+     data= data,
+     col=adjustcolor(c("red","blue")[data$Sex],alpha=0.3))
+#겹치는 부분을 확인하기 위해 투명도를 0.3정도로 설정하였다.
+abline(a=-50,b=3)
+
+```
+
+```{r}
+#오분류율 구하기
+male_2_err<-nrow(data_male[data_male$Weight*3-50<data_male$Height,])/5000
+female_2_err<-nrow(data_female[data_female$Weight*3-50>data_female$Height,])/5000
+male_2_err
+female_2_err
+```
+
