@@ -1,0 +1,142 @@
+---
+title: "과제5"
+output: html_document
+date: '2022-04-03'
+---
+
+```{r}
+setwd("/Users/gwonjinhan/Desktop")
+library(dplyr)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(gridExtra)
+library(tree)
+library(e1071)
+```
+
+```{r}
+data<-read.csv(file="heart.csv",
+               header = TRUE,
+               na.strings = NA)
+data$output<-as.factor(data$output)
+data
+```
+
+```{r}
+print(colSums(is.na(data)))
+summary(data)
+v<-list()
+v<-append(v,list(ggplot(data, aes(x=sex,
+                                   fill=output, color=output))+
+                   theme(legend.position="right")+
+                   geom_histogram(bins=100,alpha=0.5, position = "identity")))
+v<-append(v,list(ggplot(data, aes(x=cp,
+                                   fill=output, color=output))+
+                   theme(legend.position="right")+
+                   geom_histogram(bins=100,alpha=0.5, position = "identity")))
+v<-append(v,list(ggplot(data, aes(x=trtbps,
+                                   fill=output, color=output))+
+                   theme(legend.position="right")+
+                   geom_histogram(bins=30,alpha=0.5, position = "identity")))
+v<-append(v,list(ggplot(data, aes(x=chol,
+                                   fill=output, color=output))+
+                   theme(legend.position="right")+
+                   geom_histogram(bins=30,alpha=0.5, position = "identity")))
+v<-append(v,list(ggplot(data, aes(x=fbs,
+                                   fill=output, color=output))+
+                   theme(legend.position="right")+
+                   geom_histogram(bins=30,alpha=0.5, position = "identity")))
+
+v<-append(v,list(ggplot(data, aes(x=restecg,
+                                   fill=output, color=output))+
+                   theme(legend.position="right")+
+                   geom_histogram(bins=30,alpha=0.5, position = "identity")))
+
+v<-append(v,list(ggplot(data, aes(x=thalachh,
+                                   fill=output, color=output))+
+                   theme(legend.position="right")+
+                   geom_histogram(bins=30,alpha=0.5, position = "identity")))
+
+v<-append(v,list(ggplot(data, aes(x=exng,
+                                   fill=output, color=output))+
+                   theme(legend.position="right")+
+                   geom_histogram(bins=30,alpha=0.5, position = "identity")))
+v<-append(v,list(ggplot(data, aes(x=oldpeak,
+                                   fill=output, color=output))+
+                   theme(legend.position="right")+
+                   geom_histogram(bins=30,alpha=0.5, position = "identity")))
+                     
+v<-append(v,list(ggplot(data, aes(x=slp,
+                                   fill=output, color=output))+
+                   theme(legend.position="right")+
+                   geom_histogram(bins=30,alpha=0.5, position = "identity")))
+                     
+v<-append(v,list(ggplot(data, aes(x=caa,
+                                   fill=output, color=output))+
+                   theme(legend.position="right")+
+                   geom_histogram(bins=30,alpha=0.5, position = "identity")))
+
+grid.arrange(grobs=v)
+```
+
+```{r}
+indexes = createDataPartition(data$output, p= .7, list=F)
+tr_set<-data[indexes,]
+te_set<-data[-indexes,]
+```
+
+```{r}
+pre_pruning<- rpart(output~.,
+            data=tr_set,
+            method="class",
+            cp=0.041,
+            minsplit=2,
+            minbucket=2,
+            maxdepth=4
+            )
+rpart.plot(pre_pruning)
+tr_pred<-predict(pre_pruning,newdata=tr_set, type='class')
+
+plotcp(pre_pruning)
+
+te_pred<-predict(pre_pruning,newdata=te_set, type='class')
+confusionMatrix(fit_pred, te_set$output)
+
+
+postResample(te_pred, te_set$output)
+postResample(tr_pred,tr_set$output)
+```
+
+```{r}
+post_pruning<-tree(output~.,data=tr_set)
+plot(post_pruning)
+text(post_pruning)
+pruning<-cv.tree(post_pruning,FUN=prune.misclass)
+plot(pruning)
+prune.trees <- prune.misclass(post_pruning, best=6)
+plot(prune.trees)
+text(prune.trees, pretty=0)
+
+treepred <- predict(prune.trees, tr_set, type='class')
+confusionMatrix(treepred, tr_set$output)
+
+treepred <- predict(prune.trees, te_set, type='class')
+confusionMatrix(treepred, te_set$output)
+```
+
+```{r}
+ctrl <- trainControl(classProbs = TRUE,
+                     summaryFunction = twoClassSummary)
+rpart_data1 <-learning_curve_dat(dat=data, outcome="output", method = "rpart",test_prop = 0.3, metric = "Accuracy")
+ggplot(rpart_data1, aes(x = Training_Size, y = Accuracy, color = Data)) +geom_smooth(method = loess, span = .8) +theme_bw()
+```
+
+```{r}
+rule_set<-rpart.rules(pre_pruning,roundint=FALSE, clip.facs=TRUE)
+rule_set
+rule_set_1<-rpart.rules(pre_pruning)
+rule_set_1
+```
+

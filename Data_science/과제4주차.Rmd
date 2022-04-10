@@ -1,0 +1,90 @@
+---
+title: "과제"
+output: html_document
+date: '2022-03-26'
+---
+
+```{r}
+setwd("/Users/gwonjinhan/Desktop")
+library(rpart)
+library(ggplot2)
+library(lattice)
+library(rpart.plot)   
+library(caret)
+library(ROCR)
+```
+
+```{r}
+x<-read.csv(file = "red_prep.csv",
+            header = TRUE,
+            stringsAsFactors = TRUE)
+y<-read.csv(file = "red_raw.csv",
+            header = TRUE,
+            stringsAsFactors = TRUE)
+z<-read.csv(file = "white_prep.csv",
+            header = TRUE,
+            stringsAsFactors = TRUE)
+a<-read.csv(file = "white_raw.csv",
+            header = TRUE,
+            stringsAsFactors = TRUE)
+b<-read.csv(file = "wine_combined.csv",
+            header = TRUE,
+            stringsAsFactors = TRUE)
+x
+y
+z
+a
+x_s<-sample(x$total.sulfur.dioxide,1000)
+y_s<-sample(y$total.sulfur.dioxide,1000)
+z_s<-sample(z$total.sulfur.dioxide,1000)
+a_s<-sample(a$total.sulfur.dioxide,1000)
+b$target<-factor(b$target)
+b=b[,-1]
+b
+```
+
+```{r}
+x_axis<-seq(0,320,by=1) #x축을 얼마나 쪼갤지
+x_hist=hist(x_s,breaks = x_axis,plot = FALSE)
+y_hist=hist(y_s,breaks = x_axis,plot = FALSE)
+z_hist=hist(z_s,breaks = x_axis,plot = FALSE)
+a_hist=hist(a_s,breaks = x_axis,plot = FALSE)
+plot(x_hist, col="blue",ylim = c(0,40),ann=FALSE)
+plot(y_hist, col="blue",add=TRUE)
+plot(z_hist, col="green",add=TRUE)
+plot(a_hist, col="green",add=TRUE)
+legend("topright",legend=c("red winde","white wine"),fill=c("blue","green"))
+
+```
+
+```{r}
+indexes=createDataPartition(b$target,p=0.7,list=F)
+train_set<-b[indexes,]
+test_set<-b[-indexes,]
+fit<-rpart(target~.,
+         data = test_set,cp=0.01,minbucket=0,maxdepth=7)
+printcp(fit)
+plotcp(fit)
+rpart.plot(fit)
+```
+
+```{r}
+pred<-predict(fit,test_set,type='class' )
+confusionMatrix(test_set$target,pred)
+```
+
+```{r}
+sample_num<- sample(1:nrow(train_set), 100)
+sample_100 <- train_set[sample_num, ]
+pred<-predict(fit,sample_100,type='class' )
+confusionMatrix(sample_100$target,pred)
+sample_num<- sample(1:nrow(train_set), 200)
+sample_200 <- train_set[sample_num, ]
+pred<-predict(fit,sample_200,type='class' )
+confusionMatrix(sample_200$target,pred)
+sample_num<- sample(1:nrow(train_set), 400)
+sample_400 <- train_set[sample_num, ]
+pred<-predict(fit,sample_400,type='class' )
+confusionMatrix(sample_400$target,pred)
+```
+

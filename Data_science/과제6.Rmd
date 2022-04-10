@@ -1,0 +1,191 @@
+---
+title: "과제6"
+output: html_document
+date: '2022-04-10'
+---
+```{r}
+library(e1071)
+library(gmodels)
+library(MASS)
+library(caret)
+library(ggplot2)
+library(lattice)
+library(klaR)
+library(rpart)
+library(rpart.plot)
+```
+
+```{r}
+data<-iris
+print(colSums(is.na(data)))
+data
+summary(iris)
+```
+
+```{r}
+#시각적 독립확인
+d_setosa = data[data$Species =='setosa',]
+d_versicolor = data[data$Species =='versicolor',]
+d_virginica = data[data$Species =='virginica',]
+
+plot(d_setosa$Sepal.Length,d_setosa$Sepal.Width)
+
+plot(d_setosa$Sepal.Length,d_setosa$Petal.Length)
+
+plot(d_setosa$Sepal.Length,d_setosa$Petal.Width)
+
+plot(d_setosa$Sepal.Width,d_setosa$Petal.Length)
+
+plot(d_setosa$Sepal.Width,d_setosa$Petal.Width)
+
+plot(d_setosa$Petal.Length,d_setosa$Petal.Width)
+cor(d_versicolor[,c(1:4)], use = "all.obs", method = "pearson")
+cor(d_setosa[,c(1:4)], use = "all.obs", method = "pearson")
+cor(d_virginica[,c(1:4)], use = "all.obs", method = "pearson")
+```
+
+```{r}
+# numeric to factor
+for(i in 1:length(data$Sepal.Length)){
+  if(data$Sepal.Length[i]<=5.1)
+      data$Sepal.Length[i]="Short"
+  else if(data$Sepal.Length[i]>5.1&&data$Sepal.Length[i]<=6.4)
+      data$Sepal.Length[i]="Midium"
+  else
+     data$Sepal.Length[i]="Long" 
+}
+data$Sepal.Length<-as.factor(data$Sepal.Length)
+
+for(i in 1:length(data$Sepal.Width)){
+  if(data$Sepal.Width[i]<=2.8)
+      data$Sepal.Width[i]="Short"
+  else if(data$Sepal.Width[i]>2.8&&data$Sepal.Width[i]<=3.3)
+      data$Sepal.Width[i]="Midium"
+  else
+     data$Sepal.Width[i]="Long" 
+}
+data$Sepal.Width<-as.factor(data$Sepal.Width)
+
+for(i in 1:length(data$Petal.Length)){
+  if(data$Petal.Length[i]<=1.6)
+      data$Petal.Length[i]="Short"
+  else if(data$Petal.Length[i]>1.6&&data$Petal.Length[i]<=5.1)
+      data$Petal.Length[i]="Midium"
+  else
+     data$Petal.Length[i]="Long" 
+}
+data$Petal.Length<-as.factor((data$Petal.Length))
+
+for(i in 1:length(data$Petal.Width)){
+  if(data$Petal.Width[i]<=0.3)
+      data$Petal.Width[i]="Short"
+  else if(data$Petal.Width[i]>0.3&&data$Petal.Width[i]<=1.8)
+      data$Petal.Width[i]="Midium"
+  else
+     data$Petal.Width[i]="Long" 
+}
+data$Petal.Width<-as.factor(data$Petal.Width)
+data$Species<-as.factor(data$Species)
+d_setosa = data[data$Species =='setosa',]
+d_versicolor = data[data$Species =='versicolor',]
+d_virginica = data[data$Species =='virginica',]
+data
+```
+
+```{r}
+x<-xtabs(~Sepal.Length+Sepal.Width,data=d_setosa)
+x
+chisq.test(x)
+fisher.test(x)
+x<-xtabs(~Sepal.Length+Petal.Length,data=d_setosa)
+x
+fisher.test(x)
+
+x<-xtabs(~Sepal.Length+Petal.Width,data=d_setosa)
+x
+fisher.test(x)
+
+x<-xtabs(~Sepal.Width+Petal.Length,data=d_setosa)
+x
+fisher.test(x)
+
+x<-xtabs(~Sepal.Width+Petal.Width,data=d_setosa)
+x
+fisher.test(x)
+
+x<-xtabs(~Petal.Length+Petal.Width,data=d_setosa)
+x
+fisher.test(x)
+```
+
+```{r}
+#test data set training data set 추출
+data$Species<-as.factor(data$Species)
+indexes = createDataPartition(data$Species, p= .7, list=F)
+tr_data=data[indexes,]
+te_data=data[-indexes,]
+tr_data
+```
+
+
+```{r}
+#factor일때 예측모델 생성
+fac_naive_model<- NaiveBayes(Species~., data=tr_data, usekernal = FALSE, fL = 0)
+pre<-predict(fac_naive_model, data[-indexes,])$class
+confusionMatrix(pre,te_data$Species)
+#fl<-seq(0,1,0.2)
+#usekernel<-c(TRUE,FALSE)
+#adjust<-seq(0,2,0.5)
+#grid<-expand.grid(fL=fl,usekernel=usekernel,adjust=adjust)
+#model =train(Species~.,
+#             data=tr_data,
+#             method = "nb",
+#             trControl = trainControl(method="cv",number = 10),
+#             tuneGrid = grid)
+#pred_1 <- predict(model, te_data, type="raw")
+#confusionMatrix(pred_1, te_data$Species)
+```
+
+```{r}
+#numeric일 때 예측모델 생성
+data
+num_naive_model = train(Species~.,tr_data,'nb',trControl=trainControl(method='cv',number=10))
+num_naive_model
+pre<-predict(fac_naive_model, data[-indexes,])$class
+confusionMatrix(pre,te_data$Species)
+```
+
+```{r}
+#numeric일 때 결정나무 예측모델 생성
+num_de_model<-rpart(Species~.,
+            data=tr_data,
+            method="class",
+            minbucket=0
+            )
+rpart.plot(num_de_model)
+pred<-predict(num_de_model,te_data,type='class')
+confusionMatrix(pred,te_data$Species)
+plotcp(num_de_model)
+printcp(num_de_model)
+ptree<-prune(num_de_model, cp= num_de_model$cptable[which.min(num_de_model$cptable[,"xerror"]),"CP"])
+rpart.plot(ptree)
+confusionMatrix(pred,te_data$Species)
+```
+
+```{r}
+#factor일 때 결정나무 예측모델 생성
+num_de_model<-rpart(Species~.,
+            data=tr_data,
+            method="class",
+            minbucket=0
+            )
+rpart.plot(num_de_model)
+pred<-predict(num_de_model,te_data,type='class')
+confusionMatrix(pred,te_data$Species)
+plotcp(num_de_model)
+printcp(num_de_model)
+ptree<-prune(num_de_model, cp= num_de_model$cptable[which.min(num_de_model$cptable[,"xerror"]),"CP"])
+rpart.plot(ptree)
+confusionMatrix(pred,te_data$Species)
+```
+
