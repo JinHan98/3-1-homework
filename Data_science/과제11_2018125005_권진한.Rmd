@@ -1,0 +1,104 @@
+---
+title: "과제11_2018125005_권진한"
+output: html_document
+date: '2022-05-21'
+---
+```{r}
+library(olsrr)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(gridExtra)
+library(tree)
+library(e1071)
+library(magrittr)
+library(dplyr)
+library(nnet)
+library(devtools)
+library(NeuralNetTools)
+library(reshape2)
+library(reshape)
+library(ROCR)
+library(pROC)
+library(corrplot)
+library(arules)
+library(arulesViz)
+library(shinythemes)
+library(pmml)
+library(extrafont)
+library(showtext)
+```
+
+
+```{r}
+data<-read.csv(file = "JeJu_shopping/jeju_shopping.csv",
+               header = TRUE,
+               na.strings = NA)
+data
+summary(data)
+```
+
+```{r}
+#연관 분석
+rule_data<-data
+rule_data <- data %>% select(CNSLT_SCLAS_NM,CNSLT_KWRD_RN1_NM,CNSLT_KWRD_RN2_NM,CNSLT_KWRD_RN3_NM,CNSLT_KWRD_RN4_NM, CNSLT_KWRD_RN5_NM)
+rule_data$category<-factor(rule_data$CNSLT_SCLAS_NM)
+rule_data$first<-factor(rule_data$CNSLT_KWRD_RN1_NM)
+rule_data$second<-factor(rule_data$CNSLT_KWRD_RN2_NM)
+rule_data$third<-factor(rule_data$CNSLT_KWRD_RN3_NM)
+rule_data$forth<-factor(rule_data$CNSLT_KWRD_RN4_NM)
+rule_data$fifth<-factor(rule_data$CNSLT_KWRD_RN5_NM)
+rule_data$second[rule_data$second=='']<-NA
+rule_data$third[rule_data$third=='']<-NA
+rule_data$forth[rule_data$forth=='']<-NA
+rule_data$fifth[rule_data$fifth=='']<-NA
+rule_data <- rule_data %>% select(category,first,second,third,forth, fifth)
+rule_data
+
+```
+
+```{r}
+showtext.auto()
+rule_data_t<-as(rule_data,'transactions')
+itemFrequency(rule_data_t,type='absolute')
+itemFrequencyPlot(rule_data_t,topN=20, type='absolute')
+rules <- apriori(rule_data_t, 
+                 parameter = list (supp = 0.01, 
+                                   conf = 0.7, 
+                                   maxlen = 4)) 
+rules<-sort (rules, by="support", decreasing=TRUE) 
+inspect(rules)
+plot(rules)
+plot(sort(rules, by = "confidence")[1:20], method = "grouped",which.plots=2, cex=0.1)
+plot(sort(rules, by = "support")[1:20], method = "grouped",which.plots=2, cex=0.1)
+plot(sort(rules, by = "coverage")[1:20], method = "grouped",which.plots=2, cex=0.1)
+plot(sort(rules, by = "support")[1:40] ,method = "graph", control = list(type="items"))
+plot(sort(rules, by = "confidence")[1:40], method = "graph", control = list(type="items"))
+plot(sort(rules, by = "coverage")[1:40],method = "graph", control = list(type="items"))
+```
+
+```{r}
+trControl <- trainControl(method='repeatedcv', number = 10, repeats = 5)
+tuneGrid = expand.grid(cost = 10**(-4:2))
+tuneGrid
+trControl <- trainControl(method = 'repeatedcv', 
+                         number = 5, 
+                         repeats = 2, 
+                         returnResamp = 'final')
+svm_model <- train(category ~.,
+              data = data,
+              method = 'svmLinear2',
+              metric = 'Accuracy',
+              trControl = trControl,
+              tuneGrid = tuneGrid
+)
+svm_model
+svm_model$finalModel
+svm_model$bestTune
+```
+
+```{r}
+
+```
+

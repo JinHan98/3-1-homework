@@ -1,9 +1,9 @@
-#include <stdio.h>
-#include <string.h>
+#include <stdio.h>//c++파일이지만 c언어로만 작성하였다.
+#include <string.h>//strcmp함수 사용 목적
 typedef struct Token
 {
-    int att;//type의 종류
-    char contents[20];//type의 내용
+    int att;//token의 종류
+    char contents[20];//token의 내용
 };
 char bf;//pushback용 buffer
 char cur_line[100]; //현재 줄
@@ -16,13 +16,13 @@ bool is_int(char a){
     else
         return 0;
 }
-bool is_char(char a){
+bool is_char(char a){//letter인지 확인하는 함수
     if((a>='A'&&a<='Z')||(a>='a'&&a<='z')||a=='_')
         return 1;
     else
         return 0;
 }
-int what_type(char a){
+int what_type(char a){//어떤 type의 token인지 판별하는 함수
     int att;
     switch (a)
     {
@@ -134,7 +134,7 @@ int what_type(char a){
     }
     return att;
 }
-void get_string(){
+void get_string(){//what_type함수에서 못 걸러낸 Id와 Id type if for intliteral 등을 구분해주는 함수
     int s_index=1;
     if(is_char(this_Token.contents[0])){
         while(is_char(cur_line[++cur_index])||is_int(cur_line[cur_index])){

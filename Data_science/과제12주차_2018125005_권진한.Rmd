@@ -1,0 +1,151 @@
+---
+title: "과제12_2018125005_권진한"
+output: html_document
+date: '2022-05-29'
+---
+
+```{r}
+library(readxl)
+library(xlsx)
+library(olsrr)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(gridExtra)
+library(tree)
+library(e1071)
+library(magrittr)
+library(dplyr)
+library(nnet)
+library(devtools)
+library(NeuralNetTools)
+library(reshape2)
+library(reshape)
+library(ROCR)
+library(pROC)
+library(corrplot)
+library(arules)
+library(arulesViz)
+library(shinythemes)
+library(pmml)
+library(extrafont)
+library(showtext)
+library(philentropy)
+library(NbClust)
+library(factoextra)
+library(fpc)
+```
+
+```{r}
+setwd("/Users/gwonjinhan/Desktop")
+```
+
+```{r}
+df <- xlsx::read.xlsx("data.xlsx", sheetIndex = 1, encoding="UTF-8")
+df
+df$종합 <- as.numeric(df$종합)
+df$건강상태 <- as.numeric(df$건강상태)
+df$재정상태 <- as.numeric(df$재정상태)
+df$친구관계 <- as.numeric(df$친구관계)
+df$가정생활 <- as.numeric(df$가정생활)
+df$사회생활 <- as.numeric(df$사회생활)
+row_data<-df[,1]
+df<-df[,-1]
+data<-as.matrix(df)
+dimnames(data)<-list(row=row_data,col=c("종합","건강상태","재정상태","친구관계","가정생활","사회생활"))
+data
+```
+
+```{r}
+data_scaled <- scale(data, center = FALSE, apply(data, MARGIN = 2, FUN = max))
+data_scaled
+data_scaled_dist <- dist(data_scaled, method = "euclidean") 
+data_scaled_dist
+```
+
+```{r}
+showtext.auto()
+distance(data, method = "euclidean")
+hc <- hclust(dist(data, method = "euclidean", diag = TRUE), 
+             method = "ward.D")
+hc
+plot(hc,hang=-10,las=3)
+
+hc_scaled <- hclust(dist(data_scaled, method = "euclidean", diag = TRUE), 
+             method = "ward.D")
+hc_scaled
+plot(hc_scaled,hang=-10,las=3)
+
+nc <- NbClust(data, min.nc=2, max.nc=15, method="kmeans")
+par(mfrow=c(1,1))
+barplot(table(nc$Best.n[1,]),
+        xlab="Numer of Clusters", ylab="Number of Criteria",
+        main="Number of Clusters Chosen")
+
+nc_scaled <- NbClust(data_scaled, min.nc=2, max.nc=15, method="kmeans")
+par(mfrow=c(1,1))
+barplot(table(nc_scaled$Best.n[1,]),
+        xlab="Numer of Clusters", ylab="Number of Criteria",
+        main="Number of Clusters Chosen")
+
+clust.cutree <- cutree(hc, k=2)
+clust.cutree %>% table()
+plot(hc, hang=-10, main="Dendrogeam",las=3)
+rect.hclust(hc,k=2)
+
+
+clust.cutree_scaled <- cutree(hc_scaled, k=13)
+clust.cutree_scaled %>% table()
+plot(hc_scaled, hang=-10, main="Dendrogeam",las=3)
+rect.hclust(hc_scaled,k=3)
+
+```
+
+```{r}
+#1.건강상태, 친구관계 92.04 
+#2.재정상태, 가정생활 94.35
+#3.친구관계, 사회생활 95.98
+#4.가정생활, 재정상태 94.35
+#5.사회생활, 친구관계 95.98
+#친구관계, 사회생활, 건강상태   가정생활, 재정상태
+corrplot(cor(data_scaled))
+cor(data_scaled)
+plot(prcomp(data_scaled[,c(2:6)]), type="l",sub = "Scree Plot")
+data_scaled_di_m<-cbind((data_scaled[,2]+data_scaled[,4]+data_scaled[,6])/3,(data_scaled[,3]+data_scaled[,5])/2)
+data_scaled_di_m
+plot(data_scaled_di_m)
+```
+
+```{r}
+set.seed(123)
+km <- kmeans(data, 2, nstart = 1)
+km_scaled <-kmeans(data_scaled,3)
+km_scaled_di_m <-kmeans(data_scaled_di_m,3)
+km
+km$centers
+km$withinss
+km$betweenss
+km_scaled
+km_scaled$centers
+km_scaled$withinss
+km_scaled$betweenss
+fviz_cluster(km, data = data, stand=F)
+fviz_cluster(km_scaled, data = data_scaled, stand=F)
+fviz_cluster(km_scaled_di_m, data = data_scaled_di_m, stand=F)
+data_scaled_di_m<-as.data.frame(data_scaled_di_m)
+data_scaled_di_m
+ggplot(data_scaled_di_m,aes(x=V1,y=V2)) + geom_point(color=km_scaled$cluster) + geom_point(data=as.data.frame(km_scaled$centers), aes(x=V1,y=V2), size = 6, color = "orange", shape = 17)+geom_text(aes(label=rownames(data_scaled_di_m)))
+
+```
+
+```{r}
+set.seed(123)
+dbclust <- dbscan(data_scaled_di_m, scale = T, eps = 0.5, MinPts = 0, method = "hybrid")
+table(dbclust$cluster)
+data_scaled_di_m<-as.data.frame(data_scaled_di_m)
+ggplot(data_scaled_di_m,aes(x=V1,y=V2)) + geom_text(aes(label=rownames(data_scaled_di_m)))+geom_point()
+ggplot(data_scaled_di_m,aes(x=V1,y=V2)) + geom_text(aes(label=rownames(data_scaled_di_m))) +geom_point(color=dbclust$cluster + 1)
+fviz_cluster(dbclust, data = data_scaled_di_m, stand=F)
+```
+

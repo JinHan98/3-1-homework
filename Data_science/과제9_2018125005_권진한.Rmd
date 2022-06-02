@@ -1,0 +1,136 @@
+---
+title: "과제 9"
+output: html_document
+date: '2022-05-04'
+---
+
+```{r}
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(gridExtra)
+library(tree)
+library(e1071)
+library(magrittr)
+library(dplyr)
+library(nnet)
+library(devtools)
+source('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
+library(NeuralNetTools)
+library(reshape2)
+library(reshape)
+library(ROCR)
+library(pROC)
+```
+
+
+```{r}
+setwd("/Users/gwonjinhan/Desktop")
+```
+
+```{r}
+data<-read.csv(file = "hcvdat0.csv",
+               header = TRUE,
+               na.strings = NA)
+data <- data %>% select(-X)
+data[data$Category=="0=Blood Donor",]$Category=0
+data[data$Category=="0s=suspect Blood Donor",]$Category=0
+data[data$Category=="1=Hepatitis",]$Category=1
+data[data$Category=="2=Fibrosis",]$Category=2
+data[data$Category=="3=Cirrhosis",]$Category=3
+data
+summary(data)
+```
+
+```{r}
+#결측치 평균으로 대체
+data$ALB<- ifelse( !is.na(data$ALB), x, round(mean(data$ALB, na.rm=T), 2) )
+data$ALP<- ifelse( !is.na(data$ALP), x, round(mean(data$ALP, na.rm=T), 2) )
+data$ALT<- ifelse( !is.na(data$ALT), x, round(mean(data$ALT, na.rm=T), 2) )
+data$CHOL<- ifelse( !is.na(data$CHOL), x, round(mean(data$ALB, na.rm=T), 2) )
+data$PROT<- ifelse( !is.na(data$PROT), x, round(mean(data$ALB, na.rm=T), 2) )
+data$Sex<-as.factor(data$Sex)
+summary(data)
+```
+
+```{r}
+set.seed(2839)
+indexes = createDataPartition(data$Category, p= 1/3, list=F)
+ensembledata=data[indexes,]
+data_2=data[-indexes,]
+indexes_2=createDataPartition(data_2$Category,p=0.5, list=F)
+blenderdata=data_2[indexes_2,]
+testingdata=data_2[-indexes_2,]
+```
+
+```{r}
+set.seed(2839)
+labelName <- 'Category'
+predictors <- names(ensembledata)[names(ensembledata) != labelName]#예측변수 집합
+control <- trainControl(method='cv', number=6, returnResamp='none')# cross validation
+```
+
+```{r}
+set.seed(2839)
+test_model <- train(blenderdata[,predictors], blenderdata[,labelName], method='gbm', trControl=control)
+preds <- predict(object=test_model, testingdata[,predictors])
+preds<-as.factor(preds)
+confusionMatrix(preds,as.factor(testingdata$Category))
+preds<-as.numeric(preds)
+auc <- roc(testingdata$Category, preds)
+print(auc$auc)
+plot.roc(auc,   
+         col="red",   
+         print.auc=TRUE,  
+         max.auc.polygon=TRUE,
+         auc.polygon=TRUE, auc.polygon.col="#D1F2EB")
+```
+
+```{r}
+set.seed(2839)
+model_gbm <- train(ensembledata[,predictors], ensembledata[,labelName], method='gbm', trControl=control)
+
+model_random_forest <- train(ensembledata[,predictors], ensembledata[,labelName], method='rf', trControl=control)
+
+model_treebag <- train(ensembledata[,predictors], ensembledata[,labelName], method='treebag', trControl=control)
+
+model_ann <- train(ensembledata[,predictors], ensembledata[,labelName], method='nnet', trControl=control)
+```
+
+```{r}
+set.seed(2839)
+blenderdata$gbm_PROB <- predict(object=model_gbm, blenderdata[,predictors])
+blenderdata$rf_PROB <- predict(object=model_random_forest, blenderdata[,predictors])
+blenderdata$treebag_PROB <- predict(object=model_treebag, blenderdata[,predictors])
+blenderdata$ann_PROB <- predict(object=model_ann, blenderdata[,predictors])
+blenderdata
+
+testingdata$gbm_PROB <- predict(object=model_gbm, testingdata[,predictors])
+testingdata$rf_PROB <- predict(object=model_random_forest, testingdata[,predictors])
+testingdata$treebag_PROB <- predict(object=model_treebag, testingdata[,predictors])
+testingdata$ann_PROB <- predict(object=model_ann, testingdata[,predictors])
+testingdata
+```
+
+```{r}
+set.seed(2839)
+predictors <- names(blenderdata)[names(blenderdata) != labelName]
+final_blender_model <- train(blenderdata[,predictors], blenderdata[,labelName], method='gbm', trControl=control)
+```
+
+```{r}
+set.seed(2839)
+preds <- predict(object=final_blender_model, testingdata[,predictors])
+preds<-as.factor(preds)
+confusionMatrix(preds,as.factor(testingdata$Category))
+preds<-as.numeric(preds)
+auc <- roc(testingdata$Category, preds)
+print(auc$auc)
+plot.roc(auc,   
+         col="red", 
+         print.auc=TRUE,   
+         max.auc.polygon=TRUE,  
+         auc.polygon=TRUE, auc.polygon.col="#D1F2EB")
+```
+

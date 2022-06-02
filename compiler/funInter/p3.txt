@@ -1,0 +1,13 @@
+void fib(int k){
+    if(k==1){
+        print(k);
+        printCh '\n';
+    }
+    if(k==2){
+        print(k);
+        printCh '\n';
+    }
+}
+int main(){
+    fib(2);
+}

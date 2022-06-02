@@ -1,0 +1,145 @@
+---
+title: "과제10"
+output: html_document
+date: '2022-05-15'
+---
+```{r}
+library(olsrr)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(gridExtra)
+library(tree)
+library(e1071)
+library(magrittr)
+library(dplyr)
+library(nnet)
+library(devtools)
+library(NeuralNetTools)
+library(reshape2)
+library(reshape)
+library(ROCR)
+library(pROC)
+library(corrplot)
+```
+
+```{r}
+setwd("/Users/gwonjinhan/Desktop")
+```
+
+```{r}
+data<-read.csv(file = "~/Desktop/Life Expectancy Data.csv",
+               header = TRUE,
+               na.strings = NA)
+data <- data %>% select(-Status)
+data <- data %>% select(-Country)
+data <- data %>% select(-Year)
+```
+
+```{r}
+data<-na.omit(data)
+data
+summary(data)
+```
+
+```{r}
+corrplot(round(cor(data),3))
+plot(density(data$Life.expectancy))
+```
+
+```{r}
+set.seed(3280)
+indexes = createDataPartition(data$Life.expectancy, p= 0.7, list=F)
+tr_data=data[indexes,]
+te_data=data[-indexes,]
+#설명 모델
+expl_model<-lm(Life.expectancy~.,data=data)
+#예측 모델(cv사용)
+trControl <- trainControl(method='repeatedcv', number = 200, repeats = 10)
+expec_model <- train(Life.expectancy ~.,
+              data = tr_data,
+              method = 'lm',
+              trControl = trControl
+)
+```
+
+```{r}
+#예측모델 시작(cv 사용)
+set.seed(3280)
+expec_model
+pred<-predict(expec_model,te_data)
+actuals_preds <- data.frame(cbind(actuals=te_data$Life.expectancy, predicteds=pred))
+cor(actuals_preds)#정확도
+min_max_accuracy <- mean(apply(actuals_preds, 1, min) / apply(actuals_preds, 1, max))
+min_max_accuracy
+mape <- mean(abs((actuals_preds$predicteds - actuals_preds$actuals))/actuals_preds$actuals) 
+mape
+```
+
+```{r}
+#예측모델 시작(cv 미사용) RMSE 값및 정확도 비교(정확도와 기타 값은 값이 똑같아서 RMSE만 비교하면 될거 같습니다)
+set.seed(3280)
+expec_nocv_model<-train(Life.expectancy ~.,
+              data = tr_data,
+              method = 'lm'
+)
+expec_nocv_model
+pred_nocv<-predict(expec_nocv_model,te_data)
+actuals_preds_nocv <- data.frame(cbind(actuals=te_data$Life.expectancy, predicteds=pred_nocv))
+cor(actuals_preds_nocv)#정확도
+min_max_accuracy <- mean(apply(actuals_preds_nocv, 1, min) / apply(actuals_preds_nocv, 1, max))
+min_max_accuracy
+mape <- mean(abs((actuals_preds$predicteds - actuals_preds_nocv$actuals))/actuals_preds_nocv$actuals) 
+mape
+```
+
+
+```{r}
+#설명모델 시작
+set.seed(3280)
+expl_model
+summary(expl_model)
+par(mfrow=c(2,2))
+plot(expl_model)
+ols_regress(expl_model)#일반적 설명 모델
+```
+
+```{r}
+#설명모델을 사용하여 back,forward,both방식 성능 측정
+forward<-ols_step_forward_p(expl_model,detail=TRUE)
+back<-ols_step_backward_p(expl_model,detail=TRUE)
+both<-ols_step_both_p(expl_model,detail=TRUE)
+forward
+both
+back
+plot(forward)
+plot(both)
+plot(back)
+```
+
+
+```{r}
+#backward방식 성능 측정(발표할땐 backforward 하나씩 빼면서 했지만 다른 방식과 성능을 비교하는것은 결과물만 보여드리면 될거 같아서 일부러 한번에 뺐습니다)
+data_back <- data %>% select(-thinness..1.19.years,Population,GDP,Measles)
+expl_back_model<-lm(Life.expectancy~.,data=data_back)
+ols_regress(expl_back_model)
+summary(expl_back_model)
+```
+
+```{r}
+#forward방식 성능 측정
+data_for<-data %>% select(Schooling,HIV.AIDS,Adult.Mortality,Income.composition.of.resources,percentage.expenditure,BMI,Diphtheria,under.five.deaths,infant.deaths,thinness.5.9.years,Total.expenditure,Alcohol,Polio,Hepatitis.B,Life.expectancy)
+expl_for_model<-lm(Life.expectancy~.,data=data_for)
+ols_regress(expl_for_model)
+summary(expl_for_model)
+```
+
+```{r}
+#both방식 성능 측정
+data_both<-data %>% select(Schooling,HIV.AIDS,Adult.Mortality,Income.composition.of.resources,percentage.expenditure,BMI,Diphtheria,under.five.deaths,infant.deaths,thinness.5.9.years,Total.expenditure,Alcohol,Life.expectancy)
+expl_both_model<-lm(Life.expectancy~.,data=data_both)
+ols_regress(expl_both_model)
+summary(expl_both_model)
+```
+

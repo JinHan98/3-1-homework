@@ -1,0 +1,148 @@
+---
+title: "과제7"
+output: html_document
+date: '2022-04-16'
+---
+```{r}
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(gridExtra)
+library(tree)
+library(e1071)
+library(magrittr)
+library(dplyr)
+library(nnet)
+library(devtools)
+source('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
+library(NeuralNetTools)
+library(reshape2)
+library(reshape)
+library(ROCR)
+```
+
+```{r}
+setwd("/Users/gwonjinhan/Desktop")
+```
+
+```{r}
+data<-read.csv(file = "hcvdat0.csv",
+               header = TRUE,
+               na.strings = NA)
+data <- data %>% select(-X)
+data
+summary(data)
+```
+
+```{r}
+#결측치 평균으로 대체
+data$ALB<- ifelse( !is.na(data$ALB), x, round(mean(data$ALB, na.rm=T), 2) )
+data$ALP<- ifelse( !is.na(data$ALP), x, round(mean(data$ALP, na.rm=T), 2) )
+data$ALT<- ifelse( !is.na(data$ALT), x, round(mean(data$ALT, na.rm=T), 2) )
+data$CHOL<- ifelse( !is.na(data$CHOL), x, round(mean(data$ALB, na.rm=T), 2) )
+data$PROT<- ifelse( !is.na(data$PROT), x, round(mean(data$ALB, na.rm=T), 2) )
+summary(data)
+```
+
+```{r}
+data$Category<-as.factor(data$Category)
+data[,"male"]<-ifelse(data$Sex=='m',1,0)
+data[,"female"]<-ifelse(data$Sex=='f',1,0)
+data<-data %>% select(-Sex)
+summary(data)
+```
+
+```{r}
+#데이터 분할
+set.seed(2001)
+indexes = createDataPartition(data$Category, p= .7, list=F)
+tr_set<-data[indexes,]
+te_set<-data[-indexes,]
+```
+
+```{r}
+# 인공신경망 생성
+set.seed(2001)
+nndata<-nnet(Category~.,data=tr_set,size=20)
+summary(nndata)
+plot.nnet(nndata)
+nn_pre<-predict(nndata,te_set,type = "class")
+nn_pre<-as.factor(nn_pre)
+confusionMatrix(nn_pre,te_set$Category)
+```
+
+```{r}
+#인공신경망 모델(CV사용)
+set.seed(2001)
+trControl=trainControl(method='repeatedcv', number = 10, repeats = 2)
+tuneGrid = expand.grid(size = 17:18, decay = 10 ** (-5:-2))
+nn_model = train(Category ~.,
+              data = tr_set,
+              method = 'nnet',
+              maxit = 500,
+              metric = 'Accuracy',
+              trControl = trControl,
+              tuneGrid=tuneGrid
+)
+nn_model
+model$finalModel
+```
+
+```{r}
+pred <- predict(nn_model$finalModel, newdata = te_set, type = "class") 
+pred <- factor(pred, levels = c("0=Blood Donor", "0s=suspect Blood Donor", "1=Hepatitis", "2=Fibrosis","3=Cirrhosis"  ))
+confusionMatrix(pred, te_set$Category)
+```
+
+```{r}
+#SVM 학습모델
+set.seed(2001)
+trControl <- trainControl(method='repeatedcv', number = 10, repeats = 5)
+tuneGrid = expand.grid(cost = 10**(-4:2))
+tuneGrid
+trControl <- trainControl(method = 'repeatedcv', 
+                         number = 5, 
+                         repeats = 2, 
+                         returnResamp = 'final')
+svm_model <- train(Category ~.,
+              data = tr_set,
+              method = 'svmLinear2',
+              metric = 'Accuracy',
+              trControl = trControl,
+              tuneGrid = tuneGrid
+)
+svm_model
+svm_model$finalModel
+svm_model$bestTune
+```
+
+```{r}
+pred <- predict(svm_model, te_set) 
+confusionMatrix(pred, te_set$Category)
+```
+
+```{r}
+#decision tree
+set.seed(2001)
+de_model <- rpart(Category~., 
+              data=tr_set, 
+              method = "class", 
+              control = rpart.control(minbucket=1, cp = 0, minsplit = 1),
+              parms = list(split = "information"))
+de_model
+rpart.plot(de_model)
+
+printcp(de_model)
+plotcp(de_model)
+
+de_model_p <- prune(de_model, cp = 0.0172414)
+rpart.plot(de_model_p)
+
+pred<-predict(de_model_p, te_set, type='class')
+pred
+te_set$Category
+confusionMatrix(pred,te_set$Category)
+
+```
+
